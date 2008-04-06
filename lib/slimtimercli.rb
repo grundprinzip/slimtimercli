@@ -176,12 +176,23 @@ To show all your tasks available.
 HELP
   end
 
-  def self.start
+  def self.start    
+    if ARGV.empty?
+      puts "Need to specify a task as argument"
+      return false
+    end
+                    
+    if File.exists?(Helper::current_file)
+      puts "Need to stop the other task first"
+      return false                     
+    end
+    
     info = {"task" =>  ARGV[1],
       "start_time" => Time.now}
 
     # dum curent task to file
     Helper::dump_to_file(info, "current.yml")
+    return true
   end
 
   def self.end 
@@ -189,7 +200,7 @@ HELP
     info = Helper::load_file("current.yml")
     rescue                                 
       puts "You must start a task before you finish it"
-      return
+      return false
     end
 
 
@@ -209,7 +220,7 @@ HELP
 
     # Output
     puts "Wrote new Entry for #{t.name}, duration #{result["duration_in_seconds"] / 60}m"
-
+    return true
   end
      
 end         
