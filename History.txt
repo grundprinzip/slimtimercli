@@ -1,4 +1,14 @@
+== 0.1.3 2008-04-07
+* fixed bug that allows starting a nonexisting task
+* refactored options to start slimtimer
+
+== 0.1.2 2008-04-06
+* time recording can only be stopped if a task was started
+* time recording can only be started if no other task was started
+
 == 0.1.1 2008-04-03
 
 * Initial Release of the gem
 * started adding tests
+
+

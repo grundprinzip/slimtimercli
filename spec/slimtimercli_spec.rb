@@ -1,5 +1,6 @@
-require File.dirname(__FILE__) + '/spec_helper.rb'
+require File.dirname(__FILE__) + '/spec_helper.rb'    
 
+include Slimtimercli::Helper
 # Time to add your specs!
 # http://rspec.rubyforge.org/
 describe "SlimTimer" do
@@ -7,8 +8,11 @@ describe "SlimTimer" do
   describe "Helper" do
 
     it "should return the path to the config files" do
-      Slimtimercli::Helper::config_file.should =~ /.slimtimer\/config.yml/
-      Slimtimercli::Helper::tasks_file.should =~ /.slimtimer\/tasks.yml/
+      
+      st = Slimtimercli::CommandLine.new(["-e"])
+      
+      st.config_file.should =~ /.slimtimer\/config.yml/
+      st.tasks_file.should =~ /.slimtimer\/tasks.yml/
     end
 
   end
@@ -49,44 +53,92 @@ describe "SlimTimer" do
   describe "command line interface" do
                          
     before  do
-      Slimtimercli::Helper.stub!(:root).and_return(File.dirname(__FILE__))
+      Slimtimercli::CommandLine.
+        any_instance.stubs(:root).returns(File.dirname(__FILE__))
       
       @c = File.join(File.dirname(__FILE__), "current.yml")
       FileUtils.rm(@c) if File.exists?(@c)
       
       @d = File.join(File.dirname(__FILE__), "config.yml")
       FileUtils.rm(@d) if File.exists?(@d)
+      
     end                         
                                                   
     it "should start a task" do
- 
-      # Manipulate ARGV
-      Slimtimercli.start
+      # Manipulate ARGV                     
+      
+      lambda { Slimtimercli::CommandLine.new([]) }.should
+        raise_error(RuntimeError)
       File.exists?(@c).should be_false
-       
+      
+      Slimtimercli::CommandLine.
+        any_instance.stubs(:load_tasks).
+        returns(stub("task", :find => stub("task", :name => "test")))   
+        
       # Set a task
       ARGV[1] = "test"
-      Slimtimercli.start              
+      
+      st = Slimtimercli::CommandLine.new(ARGV)
+      st.start              
       File.exists?(@c).should be_true
                   
       # no double start                               
-      Slimtimercli.start.should be_false
-      
-      
+      st.start.should be_false
     end
 
     it "should stop a task" do
-      Slimtimercli.stub!(:tasks).and_return(stub("task", :find => stub("task", :name => "test")))
-      Slimtimercli::Helper.stub!(:login).
-        and_return(stub("slimtimer", :create_time_entry => {"duration_in_seconds" => 10}))
+      Slimtimercli::CommandLine.
+        any_instance.stubs(:load_tasks).
+        returns(stub("task", :find => stub("task", :name => "test")))
+        
+      Slimtimercli::CommandLine.any_instance.stubs(:login).
+        returns(stub("slimtimer", 
+          :create_time_entry => {"duration_in_seconds" => 10}))
       
-      ARGV[1] = "test"
-      Slimtimercli.start.should be_true
-      Slimtimercli.end.should be_true
+      ARGV[1] = "test"                         
+      st = Slimtimercli::CommandLine.new(ARGV)
+      st.start.should be_true
+      st.end.should be_true
+      
+      File.exists?(@c).should be_false
     end          
     
     it "should not stop a task if none is running" do
-      Slimtimercli.end.should be_false
+      st = Slimtimercli::CommandLine.new(["-e"])
+      st.end.should be_false
+    end
+    
+    it "should not start a task that does not exist" do
+      Slimtimercli::CommandLine.any_instance.
+        stubs(:load_tasks).returns(stub("task", :find => nil))
+      
+      ARGV[1] = "not exisiting task"
+      st = Slimtimercli::CommandLine.new(ARGV)
+      st.start.should be_false     
+      
+    end
+                                                   
+    it "should allow to force the deletion of the current task" do
+      st = Slimtimercli::CommandLine.new(["-e"])
+      st.end.should be_false
+      ARGV[0] = "-e"
+      ARGV[1] = "--force" || "-f"              
+      st = Slimtimercli::CommandLine.new(ARGV)
+      st.end.should be_true
+    end
+    
+  end
+
+  describe "option parser" do
+    
+    it "should parse the start part correctly" do
+
+      args = ["--start", "my_task"]
+      options = parse(args)
+      
+      options.run.should == "start"
+      options.task_name.should == "my_task"
+      
     end
     
   end

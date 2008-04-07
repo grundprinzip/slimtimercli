@@ -6,7 +6,9 @@ require 'net/http'
 require 'rubygems'
 require 'active_record'
 require 'active_support'
-require 'yaml'    
+require 'yaml'             
+require 'optparse'
+require 'ostruct'
 
 require "slimtimercli/entities"
 require "slimtimercli/slim_timer"
@@ -14,7 +16,7 @@ require "slimtimercli/version"
 
 module Slimtimercli
   module Helper
-    def self.login
+    def login
       config = Helper::load_config
       st = SlimTimer.new(config["email"], config["password"],
         config["api_key"])
@@ -23,23 +25,23 @@ module Slimtimercli
       st  
     end
 
-    def self.root
+    def root
       File.join(ENV["HOME"], ".slimtimer")
     end
 
-    def self.config_file
+    def config_file
       File.join(root, "config.yml")
     end
 
-    def self.tasks_file
+    def tasks_file
       File.join(root, "tasks.yml")
     end
 
-    def self.current_file
+    def current_file
       File.join(root, "current.yml")
     end
 
-    def self.check_and_create_dir
+    def check_and_create_dir
       raise "Home DIR not set!" unless ENV["HOME"]
 
       unless File.directory?(root)
@@ -47,7 +49,7 @@ module Slimtimercli
       end
     end
 
-    def self.load_config
+    def load_config
       check_and_create_dir
 
       unless File.exists?(File.join(root, "config.yml"))
@@ -58,89 +60,76 @@ module Slimtimercli
       load_file("config.yml")
     end
 
-    def self.save_config(config)
+    def save_config(config)
       dump_to_file(config, "config.yml")
     end
 
-    def self.load_file(file)
+    def load_file(file)
       File.open( File.join(root, file) ) { |yf| YAML::load( yf ) }
     end
 
-    def self.dump_to_file(object, file)
+    def dump_to_file(object, file)
       check_and_create_dir
       File.open( File.join(root, file), 'w' ) do |out|
         YAML.dump(object, out )
       end
     end
-  end
-    
-  def self.create_task
-    name = ARGV[1]
 
-    st = Helper::login
-    if st.create_task(name)                    
-      Helper::dump_to_file(st.tasks, "tasks.yml")
-      puts "Task #{name} successfully created."
-    end            
-  end
-
-  def self.tasks(show= true)
-    config = Helper::load_config
-    st = SlimTimer.new(config["email"], config["password"],
-      config["api_key"])
-
-    if !File.exists?(Helper::tasks_file) ||
-       File.mtime(Helper::tasks_file) < (Time.now - 60 * 60 *24)
-
-      st.login
-      Helper::dump_to_file(st.tasks, "tasks.yml")
+    def rm_current
+      FileUtils.rm(current_file) if
+        File.exists?(current_file)
     end
 
-    tasks = Helper::load_file("tasks.yml")
-
-    return tasks unless show
-
-    tasks.each do |t|
-      puts t.name
-    end
-  end
-
-  def self.force_reload
-    config = Helper::load_config
-    st = SlimTimer.new(config["email"], config["password"],
-      config["api_key"])
-
-    st.login
-    Helper::dump_to_file(st.tasks, "tasks.yml")
-    tasks = Helper::load_file("tasks.yml")
-
-    tasks.each do |t|
-      puts t.name
-    end
-  end
-
-  # This method stores the credentials in the necessary directoyr
-  def self.setup
-    config = Helper::load_config
-
-    puts "Slimtimer Login Credentials\n"
-    print "E-Mail: "
-    config["email"] = STDIN.gets.gsub("\n", "")
-
-    print "Password: "
-    config["password"] = STDIN.gets.gsub("\n", "")
-
-    print "API Key: "
-    config["api_key"] = STDIN.gets.gsub("\n", "")
-
-    Helper::save_config(config)
-
-    # clear the screen
-    system("clear")
-  end
-
-  def self.help
-    puts <<-HELP
+    def parse(args)  
+      
+      if !args || args.empty?
+        raise "Need to specify arguments, run slimtimer -h for help"
+        
+      end
+      
+      options = OpenStruct.new
+      options.force = false
+      
+      opts = OptionParser.new do |opts|
+        
+        opts.banner = "Usage: slimtimer [options]"
+        
+        opts.on("-s TASK", "--start TASK", 
+          "Start a TASK given by the task name") do |t|
+            
+          options.run = "start"
+          options.task_name = t
+        end 
+        
+        opts.on("-c TASK", "--create TASK", 
+          "Create a ne task by the given name") do |t|
+          options.run = "create"
+          options.task_name = t
+        end
+        
+        opts.on("-e", "--end" ,"Stops time recording for the given task") do
+          options.run = "stop"
+        end       
+        
+        opts.on("-t", "--tasks", "Prints all available tasks") do
+          options.run = "tasks"
+        end
+        
+        opts.on("-f", "--force", "Force deletion of tasks") do
+          options.force = true
+        end     
+        
+        opts.on("--setup", "Setup your account") do
+          options.run = "setup"
+        end
+        
+        opts.on_tail("-h", "Shows this note") do
+          puts opts
+          exit
+        end
+        
+        opts.on("--help", "Show verbose help") do
+          @out.puts <<-HELP
 SlimTimer is a tool to record your time spend on a
 task. SlimTimer CLI allows you to controll your 
 SlimTimer directly from where you spend most of your
@@ -174,53 +163,166 @@ Finally you can run
 
 To show all your tasks available.
 HELP
+          exit
+        end
+      end   
+      
+      begin
+        opts.parse!(args)
+      rescue
+        puts $!.message
+        exit
+      end
+      options
+    end
   end
 
-  def self.start    
-    if ARGV.empty?
-      puts "Need to specify a task as argument"
-      return false
+  class CommandLine
+                  
+    # Include Helper module
+    include Helper
+    
+    def initialize(args, output = $stdout)
+      @args = args
+      @out = output       
+      
+      deprecated_calls
+      
+      @options = parse(args)
     end
-                    
-    if File.exists?(Helper::current_file)
-      puts "Need to stop the other task first"
-      return false                     
+                                          
+    def create      
+      st = login
+      if st.create_task(@options.task_name)                    
+        dump_to_file(st.tasks, "tasks.yml")
+        @out.puts "Task #{name} successfully created."
+      end
     end
     
-    info = {"task" =>  ARGV[1],
-      "start_time" => Time.now}
+    def tasks(show = true)
+      tasks = load_tasks
+      return tasks unless show
 
-    # dum curent task to file
-    Helper::dump_to_file(info, "current.yml")
-    return true
-  end
-
-  def self.end 
-    begin
-    info = Helper::load_file("current.yml")
-    rescue                                 
-      puts "You must start a task before you finish it"
-      return false
+      tasks.each do |t|
+        @out.puts t.name
+      end
     end
+    
+    def setup
+      config = load_config
 
+      @out.puts "Slimtimer Login Credentials\n"
+      @out.print "E-Mail: "
+      config["email"] = STDIN.gets.gsub("\n", "")
 
-    #Find task in tasks yml
-    t = tasks(false).find {|t| t.name == info["task"]}
+      @out.print "Password: "
+      config["password"] = STDIN.gets.gsub("\n", "")
 
-    raise "Task not found in list. Reload List?" unless t
+      @out.print "API Key: "
+      config["api_key"] = STDIN.gets.gsub("\n", "")
 
-    st = Helper::login
-    result = st.create_time_entry(t, info["start_time"],
-      (Time.now - info["start_time"]).to_i)
+      save_config(config)
 
-    # Delete yml file
-    if result
-      FileUtils.rm(Helper::current_file)
-    end                            
+      # clear the screen
+      system("clear")
+    end
+    
+    def start                      
+      if File.exists?(current_file)
+        @out.puts "Need to stop the other task first"
+        return false                     
+      end
+      
+      info = {"task" =>  @options.task_name,
+        "start_time" => Time.now}
+      
+      #Find task in tasks yml
+      t = load_tasks.find {|t| t.name == info["task"]}
+      unless t
+        @out.puts "Task not found in list. Reload List?"
+        return false
+      end
 
-    # Output
-    puts "Wrote new Entry for #{t.name}, duration #{result["duration_in_seconds"] / 60}m"
-    return true
+      dump_to_file(info, "current.yml")
+      return true
+    end
+    
+    def stop   
+
+      if @options.force
+        rm_current 
+        @out.puts "Forced ending of task, no entry to slimtimer.com written"
+        return true
+      end
+      
+      
+      begin
+        info = load_file("current.yml")
+      rescue                                 
+        puts "You must start a task before you finish it"
+        return false
+      end
+
+      #Find task in tasks yml
+      t = load_tasks.find {|t| t.name == info["task"]}
+      unless t
+        @out.puts "Task not found in list. Reload List?"
+        return false
+      end
+      raise  unless t
+
+      st = login
+      result = st.create_time_entry(t, info["start_time"],
+        (Time.now - info["start_time"]).to_i)
+
+      # Delete yml file
+      if result
+        rm_current
+        
+        # Output
+        @out.puts "Wrote new Entry for #{t.name}, duration #{result["duration_in_seconds"] / 60}m"
+        return true
+      else          
+        @out.puts "Coult not write new entry, please try again"
+        return false
+      end                            
+    end
+    
+    def run
+      send(@options.run.to_sym)
+    end
+    
+    alias_method :end, :stop
+    
+    private
+    
+    # This method checks if the first parameter in args needs to
+    # be transformed to the new one
+    def deprecated_calls
+      case @args[0]
+      when "start": @args[0] = "-s"
+      when "end": @args[0] = "-e"
+      when "create_task": @args[0] = "-c"
+      when "tasks": @args[0] = "-t"
+      when "setup": @args[0] = "--setup"  
+      end
+    end
+    
+    def load_tasks(force = false)
+      config = load_config
+      st = SlimTimer.new(config["email"], config["password"],
+        config["api_key"])
+
+      tasks = []
+      if !File.exists?(tasks_file) ||
+         File.mtime(tasks_file) < (Time.now - 60 * 60 *24) || force
+        st.login
+        tasks = st.tasks
+        dump_to_file(tasks, "tasks.yml")
+      else
+        tasks = load_file("tasks.yml")
+      end
+      tasks
+    end
   end
-     
 end         

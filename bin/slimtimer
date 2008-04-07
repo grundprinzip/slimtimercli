@@ -4,9 +4,7 @@ require 'rubygems'
 gem 'slimtimercli'
 require 'slimtimercli'
 
-# Run
-if ARGV.size == 0
-  Slimtimercli.__send__(:help)  
-else
-  Slimtimercli.__send__(ARGV[0].to_sym)  
-end
+include Slimtimercli
+
+c = CommandLine.new(ARGV)
+c.run
