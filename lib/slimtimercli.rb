@@ -215,19 +215,19 @@ HELP
 
       @out.puts "Slimtimer Login Credentials\n"
       @out.print "E-Mail: "
-      config["email"] = STDIN.gets.gsub("\n", "")
+      config["email"] = $stdin.gets.strip
 
       begin
         @out.print "Password: "
         system("stty -echo")
-        config["password"] = STDIN.gets.gsub("\n", "")
+        config["password"] = $stdin.gets.strip
       ensure
         system("stty echo")
       end
 
       # Include the newline here so that both prompts are on the same line
       @out.print "\nAPI Key: "
-      config["api_key"] = STDIN.gets.gsub("\n", "")
+      config["api_key"] = $stdin.gets.strip
 
       save_config(config)
     end
