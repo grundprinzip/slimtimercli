@@ -84,7 +84,8 @@ module Slimtimercli
     def parse(args)
 
       if !args || args.empty?
-        raise "Need to specify arguments, run slimtimer -h for help"
+        warn "Need to specify arguments, run slimtimer -h for help"
+        exit 2
 
       end
 
