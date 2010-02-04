@@ -217,10 +217,16 @@ HELP
       @out.print "E-Mail: "
       config["email"] = STDIN.gets.gsub("\n", "")
 
-      @out.print "Password: "
-      config["password"] = STDIN.gets.gsub("\n", "")
+      begin
+        @out.print "Password: "
+        system("stty -echo")
+        config["password"] = STDIN.gets.gsub("\n", "")
+      ensure
+        system("stty echo")
+      end
 
-      @out.print "API Key: "
+      # Include the newline here so that both prompts are on the same line
+      @out.print "\nAPI Key: "
       config["api_key"] = STDIN.gets.gsub("\n", "")
 
       save_config(config)
