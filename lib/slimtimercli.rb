@@ -1,12 +1,9 @@
-$:.unshift(File.dirname(__FILE__)) unless
-  $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
-
 require 'fileutils'
 require 'net/http'
 require 'rubygems'
 require 'active_record'
 require 'active_support'
-require 'yaml'             
+require 'yaml'
 require 'optparse'
 require 'ostruct'
 
@@ -22,11 +19,15 @@ module Slimtimercli
         config["api_key"])
       st.login
 
-      st  
+      st
     end
 
     def root
-      File.join(ENV["HOME"], ".slimtimer")
+      if File.exists? ENV['XDG_CONFIG_HOME']
+        File.join(ENV['XDG_CONFIG_HOME'], "slimtimer")
+      else
+        File.join(ENV["HOME"], ".slimtimer")
+      end
     end
 
     def config_file
@@ -80,58 +81,58 @@ module Slimtimercli
         File.exists?(current_file)
     end
 
-    def parse(args)  
-      
+    def parse(args)
+
       if !args || args.empty?
         raise "Need to specify arguments, run slimtimer -h for help"
-        
+
       end
-      
+
       options = OpenStruct.new
       options.force = false
-      
+
       opts = OptionParser.new do |opts|
-        
+
         opts.banner = "Usage: slimtimer [options]"
-        
-        opts.on("-s TASK", "--start TASK", 
+
+        opts.on("-s TASK", "--start TASK",
           "Start a TASK given by the task name") do |t|
-            
+
           options.run = "start"
           options.task_name = t
-        end 
-        
-        opts.on("-c TASK", "--create TASK", 
+        end
+
+        opts.on("-c TASK", "--create TASK",
           "Create a ne task by the given name") do |t|
           options.run = "create"
           options.task_name = t
         end
-        
+
         opts.on("-e", "--end" ,"Stops time recording for the given task") do
           options.run = "stop"
-        end       
-        
+        end
+
         opts.on("-t", "--tasks", "Prints all available tasks") do
           options.run = "tasks"
         end
-        
+
         opts.on("-f", "--force", "Force deletion of tasks") do
           options.force = true
-        end     
-        
+        end
+
         opts.on("--setup", "Setup your account") do
           options.run = "setup"
         end
-        
+
         opts.on_tail("-h", "Shows this note") do
           puts opts
           exit
         end
-        
+
         opts.on("--help", "Show verbose help") do
           @out.puts <<-HELP
 SlimTimer is a tool to record your time spend on a
-task. SlimTimer CLI allows you to controll your 
+task. SlimTimer CLI allows you to controll your
 SlimTimer directly from where you spend most of your
 time - on the command line. To use SlimTimer proceed
 with the following steps:
@@ -152,12 +153,12 @@ To spend some time on the task you have to make the timer run
 
   slimtimer start my_shiny_task
 
-When you finished working on a task, you can call 
+When you finished working on a task, you can call
 
   slimtimer end
 
 This will write the time spend back to SlimTimer.com.
-Finally you can run 
+Finally you can run
 
   slimtimer tasks
 
@@ -165,8 +166,8 @@ To show all your tasks available.
 HELP
           exit
         end
-      end   
-      
+      end
+
       begin
         opts.parse!(args)
       rescue
@@ -178,27 +179,27 @@ HELP
   end
 
   class CommandLine
-                  
+
     # Include Helper module
     include Helper
-    
+
     def initialize(args, output = $stdout)
       @args = args
-      @out = output       
-      
+      @out = output
+
       deprecated_calls
-      
+
       @options = parse(args)
     end
-                                          
-    def create      
+
+    def create
       st = login
-      if st.create_task(@options.task_name)                    
+      if st.create_task(@options.task_name)
         dump_to_file(st.tasks, "tasks.yml")
         @out.puts "Task #{name} successfully created."
       end
     end
-    
+
     def tasks(show = true)
       tasks = load_tasks
       return tasks unless show
@@ -207,7 +208,7 @@ HELP
         @out.puts t.name
       end
     end
-    
+
     def setup
       config = load_config
 
@@ -226,16 +227,16 @@ HELP
       # clear the screen
       system("clear")
     end
-    
-    def start                      
+
+    def start
       if File.exists?(current_file)
         @out.puts "Need to stop the other task first"
-        return false                     
+        return false
       end
-      
+
       info = {"task" =>  @options.task_name,
         "start_time" => Time.now}
-      
+
       #Find task in tasks yml
       t = load_tasks.find {|t| t.name == info["task"]}
       unless t
@@ -246,19 +247,19 @@ HELP
       dump_to_file(info, "current.yml")
       return true
     end
-    
-    def stop   
+
+    def stop
 
       if @options.force
-        rm_current 
+        rm_current
         @out.puts "Forced ending of task, no entry to slimtimer.com written"
         return true
       end
-      
-      
+
+
       begin
         info = load_file("current.yml")
-      rescue                                 
+      rescue
         puts "You must start a task before you finish it"
         return false
       end
@@ -278,36 +279,36 @@ HELP
       # Delete yml file
       if result
         rm_current
-        
+
         # Output
         @out.puts "Wrote new Entry for #{t.name}, duration #{result["duration_in_seconds"] / 60}m"
         return true
-      else          
+      else
         @out.puts "Coult not write new entry, please try again"
         return false
-      end                            
+      end
     end
-    
+
     def run
       send(@options.run.to_sym)
     end
-    
+
     alias_method :end, :stop
-    
+
     private
-    
+
     # This method checks if the first parameter in args needs to
     # be transformed to the new one
     def deprecated_calls
       case @args[0]
-      when "start": @args[0] = "-s"
-      when "end": @args[0] = "-e"
-      when "create_task": @args[0] = "-c"
-      when "tasks": @args[0] = "-t"
-      when "setup": @args[0] = "--setup"  
+      when "start" then @args[0] = "-s"
+      when "end" then @args[0] = "-e"
+      when "create_task" then @args[0] = "-c"
+      when "tasks" then @args[0] = "-t"
+      when "setup" then @args[0] = "--setup"
       end
     end
-    
+
     def load_tasks(force = false)
       config = load_config
       st = SlimTimer.new(config["email"], config["password"],
@@ -325,4 +326,4 @@ HELP
       tasks
     end
   end
-end         
+end
