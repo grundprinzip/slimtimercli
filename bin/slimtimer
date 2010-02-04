@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 require 'rubygems'
 
-gem 'slimtimercli'
+$LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../lib"
 require 'slimtimercli'
 
 include Slimtimercli
