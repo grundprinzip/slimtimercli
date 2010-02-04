@@ -310,6 +310,9 @@ HELP
       when "create_task" then @args[0] = "-c"
       when "tasks" then @args[0] = "-t"
       when "setup" then @args[0] = "--setup"
+      else
+        puts "Unknown command, listing tasks..."
+        @args[0] = "-t"
       end
     end
 
