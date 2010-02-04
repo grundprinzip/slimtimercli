@@ -53,25 +53,25 @@ module Slimtimercli
     def load_config
       check_and_create_dir
 
-      unless File.exists?(File.join(root, "config.yml"))
-        File.open( File.join(root, "config.yml"), 'w' ) do |out|
+      unless File.exists?(config_file)
+        File.open( config_file, 'w' ) do |out|
           YAML.dump({}, out )
         end
       end
-      load_file("config.yml")
+      load_file(config_file)
     end
 
     def save_config(config)
-      dump_to_file(config, "config.yml")
+      dump_to_file(config, config_file)
     end
 
     def load_file(file)
-      File.open( File.join(root, file) ) { |yf| YAML::load( yf ) }
+      File.open( file ) { |yf| YAML::load( yf ) }
     end
 
     def dump_to_file(object, file)
       check_and_create_dir
-      File.open( File.join(root, file), 'w' ) do |out|
+      File.open( file, 'w' ) do |out|
         YAML.dump(object, out )
       end
     end
@@ -144,7 +144,7 @@ The first time you need to setup SlimTimer CLI with
 
 Now it will ask for your email and password and API key
 to use with your account. These information will be stored
-in ~/.slimtimer/config.yml
+in #{config_file}
 
 To create a task run
 
@@ -196,7 +196,7 @@ HELP
     def create
       st = login
       if st.create_task(@options.task_name)
-        dump_to_file(st.tasks, "tasks.yml")
+        dump_to_file(st.tasks, tasks_file)
         @out.puts "Task #{name} successfully created."
       end
     end
@@ -248,7 +248,7 @@ HELP
         return false
       end
 
-      dump_to_file(info, "current.yml")
+      dump_to_file(info, current_file)
       return true
     end
 
@@ -262,7 +262,7 @@ HELP
 
 
       begin
-        info = load_file("current.yml")
+        info = load_file(current_file)
       rescue
         puts "You must start a task before you finish it"
         return false
@@ -323,9 +323,9 @@ HELP
          File.mtime(tasks_file) < (Time.now - 60 * 60 *24) || force
         st.login
         tasks = st.tasks
-        dump_to_file(tasks, "tasks.yml")
+        dump_to_file(tasks, tasks_file)
       else
-        tasks = load_file("tasks.yml")
+        tasks = load_file(tasks_file)
       end
       tasks
     end
