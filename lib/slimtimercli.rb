@@ -224,9 +224,6 @@ HELP
       config["api_key"] = STDIN.gets.gsub("\n", "")
 
       save_config(config)
-
-      # clear the screen
-      system("clear")
     end
 
     def start
