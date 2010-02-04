@@ -23,11 +23,11 @@ module Slimtimercli
     end
 
     def root
-      if File.exists? ENV['XDG_CONFIG_HOME']
-        File.join(ENV['XDG_CONFIG_HOME'], "slimtimer")
-      else
-        File.join(ENV["HOME"], ".slimtimer")
-      end
+      @root ||= if File.exists? ENV['XDG_CONFIG_HOME']
+                  File.join(ENV['XDG_CONFIG_HOME'], "slimtimer")
+                else
+                  File.join(ENV["HOME"], ".slimtimer")
+                end
     end
 
     def config_file
