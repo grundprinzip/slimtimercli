@@ -2,14 +2,13 @@ class SlimTimer
 
   DATE_FORMAT = "%Y-%m-%d %H-%M-%S"
 
-  @host = "slimtimer.com"
-  @port = 80
-
   attr_accessor :tasks, :time_entries
 
   def initialize(user, pass, api)
     @user = user; @pass = pass
     @api_key = api
+    @host = "slimtimer.com"
+    @port = 80
   end
 
   # Performs the login to the system, and stores

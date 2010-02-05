@@ -10,7 +10,7 @@ module Slimtimercli
     end
 
     def root
-      @root ||= if File.exists? ENV['XDG_CONFIG_HOME']
+      @root ||= if ENV.key?("XDG_CONFIG_HOME") and File.exists?( ENV['XDG_CONFIG_HOME'] )
                   File.join(ENV['XDG_CONFIG_HOME'], "slimtimer")
                 else
                   File.join(ENV["HOME"], ".slimtimer")
