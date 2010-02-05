@@ -88,13 +88,11 @@ module Slimtimercli
     end
 
     def stop
-
       if @options.force
         rm_current
         @out.puts "Forced ending of task, no entry to slimtimer.com written"
         return true
       end
-
 
       begin
         info = load_file(current_file)
@@ -109,7 +107,6 @@ module Slimtimercli
         @out.puts "Task not found in list. Reload List?"
         return false
       end
-      raise  unless t
 
       st = login
       result = st.create_time_entry(t, info["start_time"],
