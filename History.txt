@@ -1,3 +1,6 @@
+== 0.1.5 2008-04-07
+* Under-the-hood changes, now it's easier to maintain and is probably a tad faster
+
 == 0.1.4 2008-04-07
 * Ruby 1.9 compatibility
 * use the XDG specification for configuration file storage location, but keep
