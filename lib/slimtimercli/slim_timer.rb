@@ -2,9 +2,8 @@ class SlimTimer
 
   DATE_FORMAT = "%Y-%m-%d %H-%M-%S"
 
-  @@host = "slimtimer.com"
-  @@port = 80
-  #@@api_key = ""
+  @host = "slimtimer.com"
+  @port = 80
 
   attr_accessor :tasks, :time_entries
 
@@ -122,7 +121,7 @@ class SlimTimer
     params = {"api_key" => @api_key}.merge(params)
     # If token there merge it
     params = {"access_token" => @token}.merge(params) if @token
-    res, body = Net::HTTP.start(@@host,@@port) {|http|     
+    res, body = Net::HTTP.start(@host,@port) {|http|     
           p params if $DEBUG
           method.body = params.to_yaml
           http.request(method)
