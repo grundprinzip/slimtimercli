@@ -83,15 +83,15 @@ class SlimTimer
     te = TimeEntry.new
     te.task = task; te.start_time = start_time
     te.duration_in_seconds = duration
-    
+
     post_request("/users/#{@user_id}/time_entries", te._serialize)
   end
 
   protected
 
   def handle_error(object)
-    if object.kind_of?(ActiveRecord::Errors)
-      raise "ActiveRecord::Errors " + object.map{|k,v| k + " " + v}.join("\n")
+    if object.class == {}.class and object.key?("error")
+      raise "Errors " + object["error"]
     else
       object
     end
@@ -110,23 +110,31 @@ class SlimTimer
   end
 
   def post_request(path, params = {})
-    request(Net::HTTP::Post.new(path, default_header), params)
+    request(Net::HTTP::Post.new(path), params)
   end
 
   def request(method, params = {})
-    
+
     puts "Start Request" if $DEBUG
     # merge api key
     params = {"api_key" => @api_key}.merge(params)
     # If token there merge it
     params = {"access_token" => @token}.merge(params) if @token
-    res, body = Net::HTTP.start(@host,@port) {|http|     
-          p params if $DEBUG
-          method.body = params.to_yaml
-          http.request(method)
-        }              
+
+    # Attach the params
+    method.body = params.to_yaml
+
+    http = Net::HTTP.new(@host, @port)
+    method['Accept'] = "application/x-yaml"
+    method["Content-Type"] = "application/x-yaml"
+    resp = http.request(method)
+    # res, body = Net::HTTP.start(@host,@port) {|http|
+    #       method.body = params.to_yaml
+    #       http.request(method)
+    #     }
     puts "Finished Request" if $DEBUG
-    handle_error(YAML.load(body))
+    result = YAML.load(resp.body)
+    handle_error(result)
   end
 
   def default_header
