@@ -1,7 +1,7 @@
 module Slimtimercli
   module Helper
     def login
-      config = Helper::load_config
+      config = load_config
       st = SlimTimer.new(config["email"], config["password"],
         config["api_key"])
       st.login
